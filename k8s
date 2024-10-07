@@ -1,0 +1,10 @@
+sudo kubeadm init \
+  --pod-network-cidr=10.10.0.0/16 \
+  --control-plane-endpoint=k8s-master1.nghiahv.local
+  
+  mkdir -p $HOME/.kube
+  sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+  sudo chown $(id -u):$(id -g) $HOME/.kube/config
+    
+kubeadm join k8s-master1.nghiahv.local:6443 --token t87drw.8383pwglrj4qol11 \
+	--discovery-token-ca-cert-hash sha256:e5703f29822a54ea4e7f7ccd19db73b515ac065468a7dfbb15755737548b3cc3 
