@@ -1,0 +1,57 @@
+https://www.elastic.co/guide/en/elasticsearch/reference/current/deb.html
+wget -qO - https://artifacts.elastic.co/GPG-KEY-elasticsearch | sudo gpg --dearmor -o /usr/share/keyrings/elasticsearch-keyring.
+sudo apt-get install apt-transport-https net-tools
+echo "deb [signed-by=/usr/share/keyrings/elasticsearch-keyring.gpg] https://artifacts.elastic.co/packages/8.x/apt stable main" | sudo tee /etc/apt/sources.list.d/elastic-8.x.list
+sudo apt-get update && sudo apt-get install elasticsearch
+ systemctl daemon-reload
+ systemctl enable elasticsearch.service
+ systemctl start elasticsearch.service
+ systemctl status elasticsearch.service
+
+ # sửa ip
+ nano /etc/elasticsearch/elasticsearch.yml
+ network.host: 172.16.162.126
+
+ -> 172.16.162.126:9200
+
+ # reset pass cho elastic
+ cd /usr/share/elastic
+ cd /usr/share/elasticsearch/bin/
+./elasticsearch-reset-password -i -u elastic
+pass: 123123
+curl -k -u elastic:123123 https://172.16.162.126:9200
+ ---
+ https://www.elastic.co/guide/en/kibana/current/deb.html
+ ver 8.16
+
+wget -qO - https://artifacts.elastic.co/GPG-KEY-elasticsearch | sudo gpg --dearmor -o /usr/share/keyrings/elasticsearch-keyring.gpg
+
+echo "deb [signed-by=/usr/share/keyrings/elasticsearch-keyring.gpg] https://artifacts.elastic.co/packages/8.x/apt stable main" | sudo tee /etc/apt/sources.list.d/elastic-8.x.list
+sudo apt-get update && sudo apt-get install kibana
+cd /usr/share/elasticsearch/
+bin/elasticsearch-create-enrollment-token -s kibana
+eyJ2ZXIiOiI4LjE0LjAiLCJhZHIiOlsiMTcyLjE2LjE2Mi4xMjY6OTIwMCJdLCJmZ3IiOiIzMzhhMzc5YzkzMWVkYTIzYWEwODExYjY5MjFhYzYxNDhhZDBlMzg3NjQ3MzYwNzYwYjdhZTY3ZmQzYjBiNGE2Iiwia2V5IjoiaGhnUEpaTUJhR3JzSi00Z1NPcUQ6NENDZlJURDlTQlNyeThjdEFfZmtTUSJ9
+sudo /bin/systemctl daemon-reload
+sudo /bin/systemctl enable kibana.service
+sudo systemctl start kibana.service
+sudo systemctl status kibana.service
+sudo systemctl stop kibana.service
+journalctl -u kibana.service  # kiểm tra log
+
+#....
+root@elk:/usr/share/elasticsearch#  netstat -tuln | grep 5601
+tcp        0      0 127.0.0.1:5601          0.0.0.0:*               LISTEN 
+#....
+netstat -tuln | grep 5601
+server.host: "0.0.0.0"
+systemctl restart kibana.service
+-> truy cập kibana 172.16.162.126:5601
+cd /usr/share/kibana
+bin/kibana-verification-code
+# đăng nhập
+username: elastic
+pass: 123123
+
+
+
+

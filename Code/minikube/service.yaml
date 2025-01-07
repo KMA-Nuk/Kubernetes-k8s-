@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service       # định tuyến và quản lý truy cập đến các pod
+metadata:
+  name: nginx-service
+spec:
+  selector:         # tìm và gửi lưu lượng đến pod có nhãn app: nginx
+    app: nginx
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+  type: NodePort      # kiểu service, mở 1 cổng ngẫu nhiên 30000-32767 pỏ

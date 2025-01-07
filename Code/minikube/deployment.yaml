@@ -1,0 +1,19 @@
+apiVersion: apps/v1     # phiên bản API k8s sử dụng
+kind: Deployment        # loại tài nguyên tệp đại diện Deployment : triển khai các ứng dụng 
+metadata:               
+  name: nginx-deployment  # nhận diện các tài nguyên trong cluster
+spec:                   # chi tiết cầu hình Deployment
+  replicas: 3           # số lượng pod sẽ duy trì , 3 bản sao
+  selector:
+    matchLabels:
+      app: nginx        # tìm các pod có nhãn app: nginx để quản lý
+  template:             # định nghĩa cấu hình cho các pod mà Deployment sẽ tạo ra
+    metadata:
+      labels:
+        app: nginx      # các pod mà Deployment tạo ra sẽ có nhãn app: nginx
+    spec:               # cấu hình container bên trong pod
+      containers:
+      - name: nginx
+        image: nginx:latest  
+        ports:
+        - containerPort: 80 #cổng 80 (HTTP) bên trong container

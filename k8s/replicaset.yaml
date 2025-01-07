@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: ReplicaSet
+metadata:
+  name: myreplicaset
+  labels:
+    app: flask-api
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: flask-api
+  template:
+    metadata:
+      labels:
+        app: flask-api
+    spec:
+      containers:
+        - name: flask-api
+          image: nghia5/flask-api:latest 
+          ports:
+            - containerPort: 5000
+

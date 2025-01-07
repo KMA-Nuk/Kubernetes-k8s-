@@ -1,0 +1,173 @@
+cụm k8s
+server             |ram|cpu|disk|    ip         | hostname          | domain
+rancher            |2  |1  |10  |172.16.162.126 | rancher           | rancher.honghia.vn
+loadbalancing-k8s  |2  |1  |10  |172.16.162.127 | loadbalancing-k8s |
+k8s-master-1       |2  |2  |30  |172.16.162.128 | k8s-master-1      |
+k8s-master-2       |2  |2  |30  |172.16.162.129 | k8s-master-2      |
+---
+chỉnh sửa địa chỉ ip trong netplan
+vi /etc/hostname // sửa lại tên server
+vi /etc/hosts :khai báo địa chỉ ip của 2 server
+172.16.162.128 k8s-master-1 
+172.16.162.129 k8s-master-2 
+-> reboot
+// làm tương ứng 2 server
+---
+swapoff -a 
+sed -i '/ swap / s/^\(.*\)$/#\1/g' /etc/fstab
+//tắt swap trên cả 2 server
+---
+//kubespray v1.24
+//cài đặt ansible v1.24
+//chỉ thực hiện trên master-1
+apt update -y && apt upgrade -y
+apt install git python3 python3-pip -y
+apt install ansible-core -y // theo phiên bản của ubuntu hiện tại -> ubuntu 22.04 -> ansible 2.12.0
+/
+pip install ansible-core==2.16.3
+ln -s /usr/local/bin/ansible /usr/bin/ansible
+\
+ansible --version (core 2.16.3)
+
+---
+ssh-keygen -t rsa
+//ssh-copy-id 172.16.162.128
+//ssh-copy-id 172.16.162.129
+ssh-copy-id nghiahv@172.16.162.128
+ssh-copy-id nghiahv@172.16.162.129
+// copy 2 server để ssh các server không cần password
+---error-keygen---
+sudo visudo
+nghiahv ALL=(ALL) NOPASSWD:ALL (thêm vào)
+nano /etc/ssh/sshd_config
+PasswordAuthentication yes
+PermitRootLogin yes
+systemctl restart ssh
+---
+git clone https://github.com/kubernetes-sigs/kubespray.git --branch release-2.24
+ls
+cd kubespray/
+cp -rfp inventory/sample inventory/myclusterk8s
+vi inventory/myclusterk8s/hosts.ini
+[all]
+k8s-master-1 ansible_host=172.16.162.128 ip=172.16.162.128 ansible_user=nghiahv
+k8s-master-2 ansible_host=172.16.162.129 ip=172.16.162.129 ansible_user=nghiahv
+
+[kube-master]
+k8s-master-1 
+k8s-master-2
+
+[kube-node]
+k8s-master-1 
+k8s-master-2
+
+[etcd]
+k8s-master-1 
+
+[k8s-cluster:children]
+kube-node
+kube-master
+
+[calico-rr]
+
+[vault]
+k8s-master-1 
+k8s-master-2
+// ưu : sử dụng tối đa tài nguyên - nhược: ảnh hưởng cả cụm
+ansible-playbook -i inventory/myclusterk8s/hosts.ini  --become --become-user=root cluster.yml
+---error-ansible---
+ansible-galaxy collection install ansible.posix
+ansible-galaxy collection install community.general
+ansible-galaxy collection install kubernetes.core
+ansible-galaxy collection list //kiểm tra 
+---
+kubectl get node
+kubectl get po -A
+---
+k edit configmap coredns -n kube-system
+-> xóa dòng loop
+k delete po ... -n kube-system (2pod coredns)
+---
+rancher : giao diện tương tác với k8s 
+Hai cách cài đặt:
+1. container độc lập dockercompose
+2. cài bằng helm lên trên cụm k8s (1 cụm k8s riêng để cài đặt rancher)
+search : https://www.suse.com/suse-rancher/support-matrix/all-supported-versions/rancher-v2-8-4/
+(cài xong docker, dockercompose)
+mkdir -p /tools/rancher
+cd /tools/rancher/
+nano rancher-docker-compose.yml
+docker logs rancher-server 2>&1 | grep "Bootstrap Password:" 
+2024/11/12 03:37:20 [INFO] Bootstrap Password: llzl8fx7hg2hrrckqbl7p8kwhss6nlfld7mpz5n5swbd9tmdxkwrzv
+pass : "Welcome to Rancher!" 
+
+(máy cá nhân)
+nano /etc/hosts
+172.16.162.126 rancher.honghia.vn
+---
+ssh-keygen -f "/home/ubuntu/.ssh/known_hosts" -R "172.16.162.130"
+ssh-keygen -f "/home/ubuntu/.ssh/known_hosts" -R "172.16.162.129"
+---
+root@k8s-master-1:~# cat /etc/netplan/00-cloud-init.yaml 
+network:
+  version: 2
+  ethernets:
+    ens33:
+      dhcp4: no
+      addresses:
+        - 172.16.162.128/24
+      gateway4: 172.16.162.2
+      nameservers:
+        addresses:
+          - 8.8.8.8
+          - 8.8.4.4 
+---
+-> nano docker-install.sh
+sudo apt update
+
+sudo apt install -y apt-transport-https ca-certificates curl software-properties-common 
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+
+echo "deb [signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+sudo apt update
+
+sudo apt install -y docker-ce
+
+sudo systemctl start docker
+
+sudo systemctl enable docker
+
+sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+
+sudo chmod +x /usr/local/bin/docker-compose
+
+docker --version
+
+docker-compose --version
+
+-> chmod +x docker-install.sh 
+-> sh docker-install.sh
+
+version: '3.8'
+services:
+  rancher-server:
+    image: rancher/rancher:v2.8.4
+    container_name: rancher-server
+    ports:
+      - "80:80"   // http
+      - "443:443" // https
+    volumes:
+      - /tools/rancher/data/:/var/lib/rancher
+    restart: unless-stopped
+    privileged: true
+->  docker-compose -f rancher-docker-compose.yml up -d
+ss -tlunp
+---
+workflow
+terraform init
+terraform apply
+Sau khi Terraform hoàn tất, kiểm tra file inventory chứa thông tin IP các máy chủ.
+Tạo file inventory.ini của Kubespray dựa trên đầu ra từ Terraform.
+ansible-playbook -i inventory.ini cluster.yml (chạy playbook Kubespray để cài đặt Kubernetes).
+
